@@ -1,0 +1,6 @@
+/target/
+.nb-gradle/
+.mvn/
+nbproject/private/
+build/
+nb-configuration.xml
