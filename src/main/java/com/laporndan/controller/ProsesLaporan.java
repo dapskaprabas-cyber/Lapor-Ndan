@@ -1,12 +1,10 @@
 package com.laporndan.controller;
 
-import com.laporndan.config.Koneksi;
+import com.laporndan.config.HibernateUtil;
+import com.laporndan.model.Laporan;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -14,12 +12,14 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 
 @WebServlet(name = "ProsesLaporan", urlPatterns = {"/ProsesLaporan"})
 @MultipartConfig(
     fileSizeThreshold = 1024 * 1024 * 2,  // 2MB
-    maxFileSize = 1024 * 1024 * 10,       // 10MB
-    maxRequestSize = 1024 * 1024 * 50     // 50MB
+    maxFileSize = 1024 * 1024 * 10,        // 10MB
+    maxRequestSize = 1024 * 1024 * 50      // 50MB
 )
 public class ProsesLaporan extends HttpServlet {
 
@@ -27,48 +27,61 @@ public class ProsesLaporan extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
         
-        // 1. Ambil data dari form index.html
+        // 1. Ambil data dari form index.jsp
+        String namaPelapor = request.getParameter("nama_pelapor");
         String tanggal = request.getParameter("tanggal");
         String waktu = request.getParameter("waktu");
         String lokasi = request.getParameter("lokasi");
         String kedalamanStr = request.getParameter("kedalaman");
         int kedalaman = Integer.parseInt(kedalamanStr);
         
-        // 2. Handle Upload File Gambar
+        // 2. Handle Upload File Gambar ke folder source project
         Part filePart = request.getPart("foto");
         String fileName = extractFileName(filePart);
         
-        // Tentukan folder penyimpanan foto di dalam project webapp/assets/uploads/
-        String uploadPath = getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "uploads";
+        String uploadPath = "D:\\NetBeansProjects\\LaporNdan\\src\\main\\webapp\\assets\\uploads";
         File uploadDir = new File(uploadPath);
         if (!uploadDir.exists()) {
-            uploadDir.mkdir();
+            uploadDir.mkdirs();
         }
-        
-        // Simpan file ke server
         String filePath = uploadPath + File.separator + fileName;
         filePart.write(filePath);
 
-        // 3. Simpan ke Database menggunakan JDBC
-        Connection conn = Koneksi.getKoneksi();
-        String sql = "INSERT INTO laporan (tanggal, waktu, lokasi, kedalaman, foto, status) VALUES (?, ?, ?, ?, ?, 'Belum Ditangani')";
+        // 3. Simpan ke Database menggunakan Hibernate Session
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = null;
         
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, tanggal);
-            pstmt.setString(2, waktu);
-            pstmt.setString(3, lokasi);
-            pstmt.setInt(4, kedalaman);
-            pstmt.setString(5, fileName);
+        try {
+            tx = session.beginTransaction();
             
-            pstmt.executeUpdate();
+            // Buat objek Laporan dan masukkan datanya lewat setter
+            Laporan laporan = new Laporan();
+            laporan.setNamaPelapor(namaPelapor);
+            laporan.setTanggal(tanggal);
+            laporan.setWaktu(waktu);
+            laporan.setLokasi(lokasi);
+            laporan.setKedalaman(kedalaman);
+            laporan.setFoto(fileName);
+            laporan.setStatus("Belum Ditangani");
             
-            // Kalau berhasil, arahkan kembali ke index.html atau beri alert
-            response.sendRedirect("index.html");
+            // Simpan objek langsung pakai Hibernate!
+            session.persist(laporan);
             
-        } catch (SQLException e) {
-            try (PrintWriter out = response.getWriter()) {
-                out.println("<h3>Gagal menyimpan ke database: " + e.getMessage() + "</h3>");
+            tx.commit();
+            
+            // Redirect kembali ke index.jsp jika berhasil
+            response.sendRedirect("index.jsp");
+            
+        } catch (Exception e) {
+            if (tx != null) {
+                tx.rollback();
             }
+            e.printStackTrace();
+            try (PrintWriter out = response.getWriter()) {
+                out.println("<h3>Gagal menyimpan ke database via Hibernate: " + e.getMessage() + "</h3>");
+            }
+        } finally {
+            session.close();
         }
     }
 
