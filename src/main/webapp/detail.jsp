@@ -8,6 +8,7 @@
     String tanggal = "-";
     String waktu = "-";
     int kedalaman = 0;
+    String namaPelapor = "-";
     String foto = "";
     String status = "Belum Ditangani";
     
@@ -25,6 +26,7 @@
                 tanggal = rs.getString("tanggal");
                 waktu = rs.getString("waktu");
                 kedalaman = rs.getInt("kedalaman");
+                namaPelapor = rs.getString("nama_pelapor");
                 foto = rs.getString("foto");
                 status = rs.getString("status");
             }
@@ -55,10 +57,11 @@
             <div class="card-body">
                 <span class="badge bg-warning text-dark mb-2">Status: <%= status %></span>
                 <h4 class="fw-bold">Lokasi: <%= lokasi %></h4>
-                <p class="text-muted mb-2">Ditemukan pada: <%= tanggal %> - Pukul <%= waktu %> WIB | Kedalaman: <%= kedalaman %> cm</p>
+                <p class="text-muted mb-1">Ditemukan pada: <%= tanggal %> - Pukul <%= waktu %> WIB | Kedalaman: <%= kedalaman %> cm</p>
+                <p class="text-muted mb-3">Pelapor : <b><%= namaPelapor %></b></p>
                 
                 <% if (foto != null && !foto.isEmpty()) { %>
-                    <img src="assets/uploads/<%= foto %>" class="img-fluid rounded mb-4" alt="Foto Lubang">
+                    <img src="assets/uploads/<%= foto %>" class="img-fluid rounded mb-4" alt="Foto Lubang" onerror="this.onerror=null; this.src='https://via.placeholder.com/700x350?text=Foto+Tidak+Ditemukan';">
                 <% } else { %>
                     <img src="https://via.placeholder.com/700x350?text=Tidak+Ada+Foto" class="img-fluid rounded mb-4" alt="Foto Kosong">
                 <% } %>
@@ -74,23 +77,32 @@
                         PreparedStatement pstmtK = conn.prepareStatement(sqlKomentar);
                         pstmtK.setInt(1, id);
                         ResultSet rsK = pstmtK.executeQuery();
-                        
+
                         boolean adaKomentar = false;
                         while(rsK.next()) {
                             adaKomentar = true;
                             String namaPengguna = rsK.getString("nama_pengguna");
                             String isiKomentar = rsK.getString("isi_komentar");
+
+                            // Ambil foto_bukti dan amankan dari nilai null
                             String fotoBukti = rsK.getString("foto_bukti");
+                            if (fotoBukti == null) {
+                                fotoBukti = "";
+                            }
+
                             String tglKomentar = rsK.getString("tanggal_komentar");
                 %>
                             <div class="bg-light p-3 rounded mb-3">
                                 <strong class="d-block text-primary"><%= (namaPengguna != null && !namaPengguna.isEmpty()) ? namaPengguna : "Warga / Pelapor" %></strong>
                                 <p class="mb-1 text-dark"><%= isiKomentar %></p>
-                                <% if(fotoBukti != null && !fotoBukti.isEmpty()) { %>
+
+                                <%-- Bagian ini memastikan gambar HANYA dirender jika fotoBukti tidak kosong dan bukan "null" --%>
+                                <% if(!fotoBukti.isEmpty() && !fotoBukti.equalsIgnoreCase("")) { %>
                                     <div class="mb-2">
-                                        <img src="assets/uploads/<%= fotoBukti %>" class="img-thumbnail" style="max-height: 150px;" alt="Bukti Perbaikan">
+                                        <img src="assets/uploads/<%= fotoBukti %>" class="img-thumbnail" style="max-height: 150px;" alt="Bukti Perbaikan" onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=Error';">
                                     </div>
                                 <% } %>
+
                                 <small class="text-muted"><%= tglKomentar %></small>
                             </div>
                 <% 

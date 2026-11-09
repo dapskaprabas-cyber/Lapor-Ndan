@@ -22,7 +22,9 @@ public class AksiAdmin extends HttpServlet {
             int id = Integer.parseInt(idStr);
             
             if (action.equals("selesai")) {
-                LaporanDao.updateStatus(id);
+                LaporanDao.updateStatus(id, "Selesai"); // atau sesuaikan method update status kamu
+            } else if (action.equals("batal")) {
+                LaporanDao.updateStatus(id, "Belum Ditangani"); // Mengembalikan status ke awal
             } else if (action.equals("hapus")) {
                 LaporanDao.hapusLaporan(id);
             }

@@ -23,8 +23,21 @@
     <nav class="navbar navbar-dark bg-primary shadow-sm mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold" href="#">Lapor Ndan</a>
-            <!-- Tombol untuk memunculkan Modal Login Admin -->
-            <button class="btn btn-light btn-sm fw-semibold" onclick="bukaModalLogin()">Login Admin</button>
+            <div>
+                <%
+                    Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
+                    if (isAdmin != null && isAdmin) {
+                %>
+                    <span class="text-white me-2 small">Halo, Admin</span>
+                    <a href="LogoutAdmin" class="btn btn-danger btn-sm fw-semibold">Logout</a>
+                <%
+                    } else {
+                %>
+                    <button class="btn btn-light btn-sm fw-semibold" onclick="bukaModalLogin()">Login Admin</button>
+                <%
+                    }
+                %>
+            </div>
         </div>
     </nav>
 
@@ -38,7 +51,6 @@
             <div class="card-body">
                 <form action="ProsesLaporan" method="POST" enctype="multipart/form-data">
                     <div class="row g-3">
-                        <!-- Input Nama Pelapor Ditambahkan di Sini -->
                         <div class="col-12">
                             <label class="form-label">Nama Pelapor</label>
                             <input type="text" name="nama_pelapor" class="form-control" placeholder="Masukkan nama lengkap kamu..." required>
@@ -81,14 +93,13 @@
             } else {
                 for (String[] lap : listLaporan) {
                     String id = lap[0];
-                    // Sesuaikan indeks array jika nama_pelapor ditambahkan di DAO:
-                    // Contoh: lap[1] = nama_pelapor, lap[2] = tanggal, dst. (Sesuaikan dengan urutan SELECT di LaporanDao kamu)
                     String tanggal = lap[1];
                     String waktu = lap[2];
                     String lokasi = lap[3];
                     String kedalaman = lap[4];
                     String foto = lap[5];
                     String status = lap[6];
+                    String namaPelapor = lap[7]; 
                     
                     String badgeClass = status.equals("Selesai") ? "bg-success" : "bg-warning text-dark";
         %>
@@ -99,17 +110,28 @@
                         <small class="text-muted"><%= tanggal %> - <%= waktu %> WIB</small>
                     </div>
                     <h6 class="fw-bold text-primary mb-1">Lokasi: <%= lokasi %></h6>
-                    <p class="mb-2 text-muted">Perkiraan kedalaman lubang: <b><%= kedalaman %> cm</b></p>
+                    <p class="mb-1 text-muted">Perkiraan kedalaman lubang: <b><%= kedalaman %> cm</b></p>
+                    <p class="mb-3 text-muted">Pelapor : <b><%= namaPelapor %></b></p>
 
-                    <img src="assets/uploads/<%= foto %>" class="img-fluid rounded mb-3" alt="Foto Lubang" onerror="this.src='https://via.placeholder.com/700x350?text=Foto+Tidak+Ditemukan'">
-
+                    <img src="assets/uploads/<%= foto %>" class="img-fluid rounded mb-3" alt="Foto Lubang" onerror="this.onerror=null; this.src='https://via.placeholder.com/700x350?text=Foto+Tidak+Ditemukan';">
+                    
                     <div class="d-flex justify-content-between align-items-center border-top pt-2">
                         <a href="detail.jsp?id=<%= id %>" class="btn btn-outline-primary btn-sm">Lihat Detail & Komentar</a>
 
-                        <div class="admin-only-buttons d-none">
-                            <a href="AksiAdmin?action=selesai&id=<%= id %>" class="btn btn-success btn-sm me-1">Mark Completed</a>
-                            <a href="AksiAdmin?action=hapus&id=<%= id %>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus laporan ini?')">Hapus</a>
-                        </div>
+                        <% 
+                            if (isAdmin != null && isAdmin) { 
+                        %>
+                            <div>
+                                <% if (status != null && status.equalsIgnoreCase("Selesai")) { %>
+                                    <a href="AksiAdmin?action=batal&id=<%= id %>" class="btn btn-secondary btn-sm me-1" onclick="return confirm('Batalkan status selesai untuk laporan ini?')">Batalkan Selesai</a>
+                                <% } else { %>
+                                    <a href="AksiAdmin?action=selesai&id=<%= id %>" class="btn btn-success btn-sm me-1">Mark Completed</a>
+                                <% } %>
+                                <a href="AksiAdmin?action=hapus&id=<%= id %>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus laporan ini?')">Hapus</a>
+                            </div>
+                        <% 
+                            } 
+                        %>
                     </div>
                 </div>
             </div>
@@ -120,21 +142,22 @@
 
     </div>
 
+    <!-- Modal Login Admin -->
     <div id="modalLogin" class="modal-login">
         <div class="modal-content-custom shadow">
             <h5 class="fw-bold mb-3 text-center">Login Admin</h5>
-            <form>
+            <form action="LoginAdmin" method="POST">
                 <div class="mb-3">
                     <label class="form-label">Username Admin</label>
-                    <input type="text" class="form-control" placeholder="Masukkan username">
+                    <input type="text" name="username" class="form-control" placeholder="Masukkan username" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <input type="password" class="form-control" placeholder="Masukkan password">
+                    <input type="password" name="password" class="form-control" placeholder="Masukkan password" required>
                 </div>
                 <div class="d-flex justify-content-between mt-4">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="tutupModalLogin()">Batal</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="simulasiLoginAdmin()">Login</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Login</button>
                 </div>
             </form>
         </div>
@@ -147,13 +170,6 @@
 
         function tutupModalLogin() {
             document.getElementById('modalLogin').style.display = 'none';
-        }
-
-        function simulasiLoginAdmin() {
-            alert("Login Admin Berhasil! (Simulasi Mode Admin Aktif)");
-            tutupModalLogin();
-            let adminBtns = document.querySelectorAll('.admin-only-buttons');
-            adminBtns.forEach(btn => btn.classList.remove('d-none'));
         }
     </script>
 </body>

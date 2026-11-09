@@ -5,6 +5,8 @@ import com.laporndan.model.Laporan;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -27,7 +29,6 @@ public class ProsesLaporan extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
         
-        // 1. Ambil data dari form index.jsp
         String namaPelapor = request.getParameter("nama_pelapor");
         String tanggal = request.getParameter("tanggal");
         String waktu = request.getParameter("waktu");
@@ -35,26 +36,34 @@ public class ProsesLaporan extends HttpServlet {
         String kedalamanStr = request.getParameter("kedalaman");
         int kedalaman = Integer.parseInt(kedalamanStr);
         
-        // 2. Handle Upload File Gambar ke folder source project
         Part filePart = request.getPart("foto");
         String fileName = extractFileName(filePart);
         
-        String uploadPath = "D:\\NetBeansProjects\\LaporNdan\\src\\main\\webapp\\assets\\uploads";
-        File uploadDir = new File(uploadPath);
-        if (!uploadDir.exists()) {
-            uploadDir.mkdirs();
+        // 1. Simpan permanen ke folder source OneDrive (Aman dari Clean and Build)
+        String sourcePath = "C:\\Users\\itoto\\OneDrive\\Documents\\NetBeansProjects\\LaporNdan\\src\\main\\webapp\\assets\\uploads";
+        File sourceDir = new File(sourcePath);
+        if (!sourceDir.exists()) {
+            sourceDir.mkdirs();
         }
-        String filePath = uploadPath + File.separator + fileName;
-        filePart.write(filePath);
+        File sourceFile = new File(sourceDir, fileName);
+        filePart.write(sourceFile.getAbsolutePath());
 
-        // 3. Simpan ke Database menggunakan Hibernate Session
+        // 2. Salin juga secara instan ke folder deployment aktif Tomcat supaya langsung muncul
+        String runtimePath = getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "uploads";
+        File runtimeDir = new File(runtimePath);
+        if (!runtimeDir.exists()) {
+            runtimeDir.mkdirs();
+        }
+        File runtimeFile = new File(runtimeDir, fileName);
+        Files.copy(sourceFile.toPath(), runtimeFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+        // 3. Simpan ke Database via Hibernate
         Session session = HibernateUtil.getSessionFactory().openSession();
         Transaction tx = null;
         
         try {
             tx = session.beginTransaction();
             
-            // Buat objek Laporan dan masukkan datanya lewat setter
             Laporan laporan = new Laporan();
             laporan.setNamaPelapor(namaPelapor);
             laporan.setTanggal(tanggal);
@@ -64,12 +73,9 @@ public class ProsesLaporan extends HttpServlet {
             laporan.setFoto(fileName);
             laporan.setStatus("Belum Ditangani");
             
-            // Simpan objek langsung pakai Hibernate!
             session.persist(laporan);
-            
             tx.commit();
             
-            // Redirect kembali ke index.jsp jika berhasil
             response.sendRedirect("index.jsp");
             
         } catch (Exception e) {
@@ -85,7 +91,6 @@ public class ProsesLaporan extends HttpServlet {
         }
     }
 
-    // Helper method buat narik nama file yang di-upload
     private String extractFileName(Part part) {
         String contentDisp = part.getHeader("content-disposition");
         String[] items = contentDisp.split(";");

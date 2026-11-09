@@ -22,7 +22,7 @@ public class LaporanDao {
                 ResultSet rs = stmt.executeQuery(sql);
                 
                 while (rs.next()) {
-                    String[] data = new String[7];
+                    String[] data = new String[8];
                     data[0] = rs.getString("id");
                     data[1] = rs.getString("tanggal");
                     data[2] = rs.getString("waktu");
@@ -30,6 +30,7 @@ public class LaporanDao {
                     data[4] = rs.getString("kedalaman");
                     data[5] = rs.getString("foto");
                     data[6] = rs.getString("status");
+                    data[7] = rs.getString("nama_pelapor");
                     
                     listLaporan.add(data);
                 }
@@ -44,14 +45,15 @@ public class LaporanDao {
         return listLaporan;
     }
    
-    // Method untuk mengubah status laporan menjadi Selesai
-    public static boolean updateStatus(int id) {
+    // Method untuk mengubah status laporan secara dinamis (Selesai / Belum Ditangani)
+    public static boolean updateStatus(int id, String statusBaru) {
         boolean status = false;
         Connection conn = Koneksi.getKoneksi();
         try {
-            String sql = "UPDATE laporan SET status = 'Selesai' WHERE id = ?";
+            String sql = "UPDATE laporan SET status = ? WHERE id = ?";
             PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
+            ps.setString(1, statusBaru);
+            ps.setInt(2, id);
             
             int rows = ps.executeUpdate();
             if (rows > 0) status = true;
@@ -62,6 +64,11 @@ public class LaporanDao {
             System.out.println("Gagal Update Status: " + e.getMessage());
         }
         return status;
+    }
+
+    // Method overload lama (opsional untuk jaga-jaga kalau dipanggil di tempat lain)
+    public static boolean updateStatus(int id) {
+        return updateStatus(id, "Selesai");
     }
 
     // Method untuk menghapus laporan berdasarkan ID
